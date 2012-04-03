@@ -1,9 +1,50 @@
 (ns leiningen.hadoop
   "Create a jar for submission as a hadoop job."
-  (:require [leiningen.compile :as compile])
+  (:require [leiningen.compile :as compile]
+            [cemerick.pomegranate.aether :as aether])
   (:use [leiningen.pom :only [make-pom make-pom-properties]]
-	[leiningen.jar :only [write-jar]]
-        [clojure.contrib.java-utils :only [file]]))
+        [leiningen.jar :only [write-jar]]
+        [clojure.java.io :only [file]]))
+
+;; (defn eval-in-project
+;;   "Support eval-in-project in both Leiningen 1.x and 2.x."
+;;   [project form init]
+;;     (let [[eip two?] (or (try (require 'leiningen.core.eval)
+;;                               [(resolve 'leiningen.core.eval/eval-in-project)
+;;                                true]
+;;                               (catch java.io.FileNotFoundException _))
+;;                          (try (require 'leiningen.compile)
+;;                               [(resolve 'leiningen.compile/eval-in-project)]
+;;                               (catch java.io.FileNotFoundException _)))]
+;;       (if two?
+;;         (eip project form init)
+;;         (eip project form nil nil init))))
+
+(defn- generate-hadoop-exclusions [project]
+  (let [existing-excludes (:jar-exclusions project)
+        all-deps (aether/resolve-dependencies
+                  :local-repo (:local-repo project)
+                  :offline? (:offline project)
+                  :repositories (add-auth (:repositories project))
+                  :coordinates (:dependencies project)
+                  )
+        hadoop-coordinate (filter #(= "org.apache.hadoop/hadoop-core" (str (first %)))
+                                  (keys all-deps))
+        hadoop-deps (when hadoop-coordinate
+                      (aether/resolve-dependencies
+                       :local-repo (:local-repo project)
+                       :offline? (:offline project)
+                       :repositories (add-auth (:repositories project))
+                       :coordinates hadoop-coordinate))
+        _ (println "hadoop-deps: " hadoop-deps)
+        hadoop-regexes (map (fn [e]
+                              (let [pkg (first e)]
+                                (re-pattern (str (name (first pkg))
+                                                 "-" (second pkg)))))
+                            hadoop-deps)
+        _ (println "hadoop-regexes: " hadoop-regexes)
+        ]
+    (concat existing-excludes hadoop-regexes)))
 
 (defn- jar
   "Create a $PROJECT-hadoop.jar file containing the compiled .class files
@@ -12,6 +53,8 @@ will be used as the main-class for an executable jar."
   ([project jar-name]
      (compile/compile project)
      (let [jar-file (str (:root project) "/" jar-name)
+           exclude-hadoop? (and (not (nil? (:exclude-hadoop project)))
+                                (true? (:exclude-hadoop project)))
            filespecs [{:type :bytes
                        :path (format "meta-inf/maven/%s/%s/pom.xml"
                                      (:group project)
@@ -27,11 +70,15 @@ will be used as the main-class for an executable jar."
                         {:type :path :path (:resources-path project)})
                       {:type :path :path (:compile-path project)}
                       {:type :path :path (:source-path project)}
-		      {:type :path :path (:library-path project)}
-                      {:type :path :path (str (:root project) "/project.clj")}]]
+                      {:type :path :path (:library-path project)}
+                      {:type :path :path (str (:root project) "/project.clj")}]
+           exclusions (generate-hadoop-exclusions project)
+           nproject (if (and exclude-hadoop? (not (nil? exclusions)))
+                      (assoc project :jar-exclusions exclusions)
+                      project)]
        ;; TODO: support slim, etc
-       (write-jar project jar-file filespecs)
-       (println "Created" jar-file)
+       (write-jar nproject jar-file filespecs)
+       (println "Created" jar-file ", hadoop excluded: " exclude-hadoop?)
        jar-file))
   ([project] (jar project (str (:name project) ".jar"))))
 
