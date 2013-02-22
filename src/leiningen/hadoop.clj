@@ -1,6 +1,7 @@
 (ns leiningen.hadoop
   "Create a jar for submission as a hadoop job."
   (:require [leiningen.compile :as compile]
+            [leiningen.classpath :as classpath]
             [cemerick.pomegranate.aether :as aether])
   (:use [leiningen.pom :only [make-pom make-pom-properties]]
         [leiningen.jar :only [write-jar]]
@@ -27,6 +28,7 @@
                   :offline? (:offline project)
                   :repositories (add-auth (:repositories project))
                   :coordinates (:dependencies project)
+		  :proxy (classpath/get-proxy-settings )
                   )
         hadoop-coordinate (filter #(= "org.apache.hadoop/hadoop-core" (str (first %)))
                                   (keys all-deps))
@@ -35,6 +37,7 @@
                        :local-repo (:local-repo project)
                        :offline? (:offline project)
                        :repositories (add-auth (:repositories project))
+		       :proxy (classpath/get-proxy-settings )
                        :coordinates hadoop-coordinate))
         _ (println "hadoop-deps: " hadoop-deps)
         hadoop-regexes (map (fn [e]
