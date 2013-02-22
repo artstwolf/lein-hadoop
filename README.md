@@ -6,7 +6,7 @@ the project dependencies.
 
 ## Installation
 
-Add to your project.clj <tt>:dev-dependencies [lein-hadoop "1.0.0"]]</tt>
+Add to your project.clj <tt>:dev-dependencies [lein-hadoop "1.1.0-msilva"]]</tt>
 
 ## Usage
 
