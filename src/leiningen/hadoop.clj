@@ -1,7 +1,7 @@
 (ns leiningen.hadoop
   "Create a jar for submission as a hadoop job."
   (:require [leiningen.compile :as compile]
-            [leiningen.classpath :as classpath]
+            [leiningen.core.classpath :as classpath]
             [cemerick.pomegranate.aether :as aether])
   (:use [leiningen.pom :only [make-pom make-pom-properties]]
         [leiningen.jar :only [write-jar]]
@@ -68,12 +68,10 @@ will be used as the main-class for an executable jar."
                                      (:group project)
                                      (:name project))
                        :bytes (make-pom-properties project)}
-                      (when (and (:resources-path project)
-                                 (.exists (file (:resources-path project))))
-                        {:type :path :path (:resources-path project)})
+                      (when (:resource-paths project)
+                        {:type :paths :paths (:resource-paths project)})
                       {:type :path :path (:compile-path project)}
-                      {:type :path :path (:source-path project)}
-                      {:type :path :path (:library-path project)}
+                      {:type :paths :paths (:source-paths project)}
                       {:type :path :path (str (:root project) "/project.clj")}]
            exclusions (generate-hadoop-exclusions project)
            nproject (if (and exclude-hadoop? (not (nil? exclusions)))
