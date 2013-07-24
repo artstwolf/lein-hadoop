@@ -26,9 +26,10 @@
         all-deps (aether/resolve-dependencies
                   :local-repo (:local-repo project)
                   :offline? (:offline project)
-                  :repositories (add-auth (:repositories project))
+;;                  :repositories (add-auth (:repositories project))
+                  :repositories (:repositories project)
                   :coordinates (:dependencies project)
-		  :proxy (classpath/get-proxy-settings )
+      :proxy (classpath/get-proxy-settings )
                   )
         hadoop-coordinate (filter #(= "org.apache.hadoop/hadoop-core" (str (first %)))
                                   (keys all-deps))
@@ -36,8 +37,9 @@
                       (aether/resolve-dependencies
                        :local-repo (:local-repo project)
                        :offline? (:offline project)
-                       :repositories (add-auth (:repositories project))
-		       :proxy (classpath/get-proxy-settings )
+;;                       :repositories (add-auth (:repositories project))
+                       :repositories (:repositories project)
+           :proxy (classpath/get-proxy-settings )
                        :coordinates hadoop-coordinate))
         _ (println "hadoop-deps: " hadoop-deps)
         hadoop-regexes (map (fn [e]
@@ -87,4 +89,3 @@ will be used as the main-class for an executable jar."
   "Create a jar for submission to hadoop."
   ([project]
      (jar project (str (:name project) "-hadoop.jar"))))
-
